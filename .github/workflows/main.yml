@@ -1,0 +1,53 @@
+name: main
+on:
+  workflow_dispatch:
+    inputs:
+      data:
+        type: string
+        default: "{}"
+        required: true
+        description: "This is a json data."
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+      - name: Save File
+        run: echo ${{toJSON(github.event.inputs.data)}} > data.json
+      - name: Validate JSON
+        uses: docker://orrosenblatt/validate-json-action:latest
+        env:
+          INPUT_SCHEMA: .github/other/schema.json
+          INPUT_JSONS: data.json
+  update:
+    needs: [check]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        value: ${{fromJson(github.event.inputs.data)}}
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+      - name: Git Config
+        run: |
+          mkdir -p ~/.ssh/
+          echo "${{ secrets.PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          git config --global user.name ${{matrix.value.name}}
+          git config --global user.email ${{matrix.value.email}}
+      - name: Use Node.js
+        uses: actions/setup-node@v3.6.0
+      - name: Update File
+        run: |
+          echo ${{toJSON(github.event.inputs.data)}} > .github/other/data.json
+          node .github/other/update.js .github/other/data.json ${{matrix.value.name}} ${{matrix.value.email}}
+          rm -rf .github/other/data.json
+          ls
+      - name: Commit
+        run: |
+          git add .
+          git commit -m "Update by ${{matrix.value.name}}."
+          git branch -M main
+          git push -u origin main

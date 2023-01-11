@@ -1,0 +1,25 @@
+{
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "name": { "type": "string" },
+      "email": { "type": "string" },
+      "data": {
+        "type": "object",
+        "patternProperties": {
+          "^[^/:*?\"<>|]+$": {
+            "oneOf": [
+              { "$ref": "#/items/properties/data" },
+              { "type": "string" }
+            ]
+          }
+        },
+        "minProperties": 1,
+        "additionalProperties": false
+      }
+    },
+    "required": ["name", "email", "data"],
+    "additionalProperties": false
+  }
+}
